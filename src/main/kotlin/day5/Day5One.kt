@@ -19,53 +19,18 @@ val sample =
     """.trimIndent()
 
 fun main() {
-    val input = sample.lines()
-//    val input = Files.readAllLines(Path.of("src/main/resources/day5/input.txt"))
+//    val input = sample.lines()
+    val input = Files.readAllLines(Path.of("src/main/resources/day5/input.txt"))
 
-    val field = input.map { line -> line.toCharArray().toList() }
-
-    fun check(
-        x: Int,
-        y: Int,
-    ): Boolean {
-        if (x < 0 || y < 0 || y >= field.size || x >= field[y].size) {
-            return false
-        }
-        return field[y][x] == '@'
+    val ranges = input.takeWhile { it.isNotEmpty() }.map { rangeString ->
+        val (a, b) = rangeString.split("-").map { it.toLong() }
+        a..b
     }
 
-    val positions = mutableListOf<Pair<Int, Int>>()
+    val result = input
+        .takeLastWhile { it.isNotEmpty() }
+        .map { it.toLong() }
+        .count { ranges.any { range -> range.contains(it) } }
 
-    (0..<field.size).forEach { y ->
-        val columns = field[y]
-        (0..<columns.size).forEach { x ->
-            if (field[y][x] != '@') {
-                return@forEach
-            }
-
-            val neighborRolls =
-                listOf(
-                    check(x - 1, y - 1),
-                    check(x, y - 1),
-                    check(x + 1, y - 1),
-                    check(x - 1, y),
-                    check(x + 1, y),
-                    check(x - 1, y + 1),
-                    check(x, y + 1),
-                    check(x + 1, y + 1),
-                ).count { it }
-
-            if (neighborRolls < 4) {
-                positions += Pair(y, x)
-            }
-        }
-    }
-
-    println("Total score of ${positions.size}")
-    println("The positions are $positions")
-
-//    println("Field debug:")
-//    positions.forEach {
-//        field[it.first][it.second] = true
-//    }
+    println(result)
 }
