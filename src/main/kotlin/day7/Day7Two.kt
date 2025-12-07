@@ -1,52 +1,76 @@
 package org.example.day7
 
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.TimeUnit
+import org.example.readDay
 
-val threads = CopyOnWriteArrayList<Thread>()
+data class Grid(
+    val singleLine: String,
+    val height: Int,
+    val width: Int
+) {
+    constructor(input: String) : this(
+        input.lines().joinToString(""),
+        input.lines().size,
+        input.lines()[0].length
+    )
 
-fun main() {
-//    val input = sample.lines()
-    val input = Files.readAllLines(Path.of("src/main/resources/day7/input.txt"))
-
-    val field = input.map { line -> line.toMutableList() }
-
-    val timelines = mutableSetOf<List<List<Char>>>()
-
-    quantumThings(0, field[0].size, field, timelines)
-
-//    threads.forEach { it.join() }
-
-    Thread.sleep(TimeUnit.MINUTES.toMillis(5))
-
-    timelines.forEach {
-        println("\n")
-        println(it.joinToString("\n") { line -> line.joinToString("") })
-        println("\n")
+    fun copyGrid(x: Int, y: Int, newVal: Char): Grid {
+        return copy(singleLine = singleLine.replaceRange(y*width + x, y*width + x + 1, newVal.toString()))
     }
 
-    println(timelines.size)
+    operator fun get(y: Int): String {
+        val start = y*width
+
+        return singleLine.substring(start, start + width)
+    }
+
 }
 
-fun quantumThings(oldY: Int, oldX: Int, field: List<List<Char>>, timelines: MutableSet<List<List<Char>>>) {
-//    println("Recurse y=$oldY, x=$oldX")
-    threads += Thread.startVirtualThread {
+fun main() {
+//    val input = sample
+    val input = readDay(7).joinToString("\n")
+
+    val timelines = mutableSetOf<String>()
+
+    val initialGrid = Grid(input)
+
+    val queue = ArrayDeque(listOf(Task(0, initialGrid.width, initialGrid)))
+
+    var counter = 0
+
+    val debug = false
+
+    do {
+        counter++
+//        if (counter % 1_000_000 == 0) {
+//            println("At step $counter with ${timelines.size} finished timelines and ${queue.size} remaining tasks")
+//        }
+        val (oldY, oldX, field) = queue.removeFirst()
+
+        if (debug && counter >= 2000)
+            return
 
         var x = oldX + 1
         val y =
-            if (x >= field[0].size) {
+            if (x >= field.width) {
                 x = 0
                 oldY + 1
             } else {
                 oldY
             }
 
-        if (y >= field.size) {
+        if (debug) {
+            val displayGrid = field.copyGrid(x, y, 'C')
+            val display = displayGrid.singleLine.chunked(displayGrid.width)
+                .take(y + 1).joinToString("\n")
+
+            println(display)
+            println("")
+        }
+
+        if (y >= field.height) {
             // time to collect the timeline
-            timelines.add(field)
-            return@startVirtualThread
+            timelines.add(field.singleLine)
+            continue
         }
 
         val beamAbove = listOf('S', '|').contains(field[y - 1][x])
@@ -54,27 +78,26 @@ fun quantumThings(oldY: Int, oldX: Int, field: List<List<Char>>, timelines: Muta
         if (beamAbove) {
             when (field[y][x]) {
                 '.' ->
-                    quantumThings(y, x, copyGrid(field, x, y, '|'), timelines)
+                    queue.add(Task(y, x, field.copyGrid( x, y, '|')))
 
                 '^' -> {
-                    quantumThings(y, x, copyGrid(field, x - 1, y, '|'), timelines)
-                    quantumThings(y, x, copyGrid(field, x + 1, y, '|'), timelines)
+                    queue.add(Task(y, x, field.copyGrid( x - 1, y, '|')))
+                    queue.add(Task(y, x, field.copyGrid( x + 1, y, '|')))
                 }
             }
         } else {
-            quantumThings(y, x, field, timelines)
+            queue.add(Task(y, x, field))
         }
-    }
+
+    } while (queue.isNotEmpty())
+
+//    timelines.forEach {
+//        println("\n")
+//        println(it.joinToString("\n") { line -> line.joinToString("") })
+//        println("\n")
+//    }
+
+    println(timelines.size)
 }
 
-fun copyGrid(grid: List<List<Char>>, x: Int, y: Int, newVal: Char): List<List<Char>> {
-    return grid.mapIndexed { innerY, line ->
-        line.mapIndexed { innerX, cell ->
-            if (innerX == x && innerY == y) {
-                newVal
-            } else {
-                cell
-            }
-        }
-    }
-}
+data class Task(val oldY: Int, val oldX: Int, val field: Grid)
