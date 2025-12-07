@@ -14,11 +14,11 @@ data class Grid(
     )
 
     fun copyGrid(x: Int, y: Int, newVal: Char): Grid {
-        return copy(singleLine = singleLine.replaceRange(y*width + x, y*width + x + 1, newVal.toString()))
+        return copy(singleLine = singleLine.replaceRange(y * width + x, y * width + x + 1, newVal.toString()))
     }
 
     operator fun get(y: Int): String {
-        val start = y*width
+        val start = y * width
 
         return singleLine.substring(start, start + width)
     }
@@ -39,6 +39,8 @@ fun main() {
 
     val debug = false
 
+    var previousY = 0
+
     do {
         counter++
 //        if (counter % 1_000_000 == 0) {
@@ -57,6 +59,11 @@ fun main() {
             } else {
                 oldY
             }
+
+        if (previousY < y) {
+            previousY = y
+            println(y)
+        }
 
         if (debug) {
             val displayGrid = field.copyGrid(x, y, 'C')
@@ -78,11 +85,11 @@ fun main() {
         if (beamAbove) {
             when (field[y][x]) {
                 '.' ->
-                    queue.add(Task(y, x, field.copyGrid( x, y, '|')))
+                    queue.add(Task(y, x, field.copyGrid(x, y, '|')))
 
                 '^' -> {
-                    queue.add(Task(y, x, field.copyGrid( x - 1, y, '|')))
-                    queue.add(Task(y, x, field.copyGrid( x + 1, y, '|')))
+                    queue.add(Task(y, x, field.copyGrid(x - 1, y, '|')))
+                    queue.add(Task(y, x, field.copyGrid(x + 1, y, '|')))
                 }
             }
         } else {
