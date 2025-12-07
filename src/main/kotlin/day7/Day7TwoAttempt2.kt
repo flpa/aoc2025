@@ -2,6 +2,9 @@ package org.example.day7
 
 import org.example.readDay
 
+/**
+ * Idea: dont copy the field, mark timelines per ID in field.
+ */
 fun main() {
 //    val input = sample.lines()
     val input = readDay(7)
