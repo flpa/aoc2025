@@ -53,71 +53,75 @@ fun border(from: Coords, to: Coords): Border {
 fun main() {
     val debug = false
 
-    val input = readDay(9)
-//    val input = sample.lines()
+//    val input = readDay(9)
+    val input = sample.lines()
 
     val cornerCords = input.map { line ->
         val (x, y) = line.split(",").map { it.toInt() }
         Coords(x, y)
     }
 
+//    val minX = cornerCords.minOf { it.x }
+//    val width = cornerCords.maxOf { it.x } - minX
+//    val minY = cornerCords.minOf { it.y }
+//    val height = cornerCords.maxOf { it.y } - minY
+
     val width = cornerCords.maxOf { it.x }
     val height = cornerCords.maxOf { it.y }
 
-    val allCoords = (0..height + 1).flatMap { y ->
-        (0..width + 1).flatMap { x ->
-            listOf(Coords(x, y))
-        }
-    }.toList()
+    println("$width x $height = ${width * height}")
 
-    println("Got all")
+//    println("Got all")
 
     val borders =
         cornerCords.windowed(2, 1).map { border(it[0], it[1]) } + border(cornerCords.last(), cornerCords.first())
 
     println("Got borders")
 
-    val friendlyCoords = allCoords.filter { (x, y) ->
-        var borderAbove = false
-        var borderBelow = false
-        var borderLeft = false
-        var borderRight = false
+    val friendlyCoords = mutableSetOf<Coords>()
 
-        borders.forEach { border ->
-            when (border) {
-                is Border.HoriBorder -> {
-                    val xRange = safeRange(border.from.x, border.to.x)
-                    if (xRange.contains(x)) {
-                        if (y <= border.y) {
-                            borderBelow = true
+    (0..height + 1).forEach { y ->
+        (0..width + 1)
+            .forEach { x ->
+                var borderAbove = false
+                var borderBelow = false
+                var borderLeft = false
+                var borderRight = false
+
+                borders.forEach { border ->
+                    when (border) {
+                        is Border.HoriBorder -> {
+                            val xRange = safeRange(border.from.x, border.to.x)
+                            if (xRange.contains(x)) {
+                                if (y <= border.y) {
+                                    borderBelow = true
+                                }
+                                if (y >= border.y) {
+                                    borderAbove = true
+                                }
+                            }
                         }
-                        if (y >= border.y) {
-                            borderAbove = true
+
+                        is Border.VertiBorder -> {
+                            val yRange = safeRange(border.from.y, border.to.y)
+                            if (yRange.contains(y)) {
+                                if (x <= border.x) {
+                                    borderRight = true
+                                }
+                                if (x >= border.x) {
+                                    borderLeft = true
+                                }
+                            }
                         }
                     }
                 }
 
-                is Border.VertiBorder -> {
-                    val yRange = safeRange(border.from.y, border.to.y)
-                    if (yRange.contains(y)) {
-                        if (x <= border.x) {
-                            borderRight = true
-                        }
-                        if (x >= border.x) {
-                            borderLeft = true
-                        }
-                    }
+                // if the field is super tricky this doesnt work?
+                if (borderAbove && borderBelow && borderLeft && borderRight) {
+                    friendlyCoords.add(Coords(x, y))
                 }
             }
-
-//            if (borderAbove && borderBelow && borderLeft && borderRight) {
-//                return@forEach
-//            }
-        }
-
-        // if the field is super tricky this doesnt work?
-        borderAbove && borderBelow && borderLeft && borderRight
-    }.toSet()
+    }
 
     println("Built friendly coords")
     if (debug) {
@@ -139,7 +143,7 @@ fun main() {
         val width = cornerCords.maxOf { it.x }
         val height = cornerCords.maxOf { it.y }
 
-        allByArea.take(10).forEach {rect ->
+        allByArea.take(10).forEach { rect ->
             val field = (0..height + 1).map {
                 (0..width + 1).map { "." }.toMutableList()
             }.toList()
