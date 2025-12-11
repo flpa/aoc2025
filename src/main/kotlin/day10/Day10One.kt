@@ -5,6 +5,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.example.readDay
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -16,6 +17,7 @@ val sample = """
 """.trimIndent()
 
 data class Machine(
+    val index: Int,
     val targetIndicatorLights: String,
     val buttons: List<Button>,
     val indicatorLights: String = ".".repeat(targetIndicatorLights.length),
@@ -55,7 +57,7 @@ fun main() {
     val input = readDay(10)
 //    val input = sample.lines()
 
-    val machines = input.map { line ->
+    val machines = input.mapIndexed { i, line ->
         val match = Regex("\\[([.#]+)] ((?:\\([0-9,]+\\) )+).*").matchEntire(line)!!
         println(match.groupValues)
         val indicatorString = match.groupValues[1]
@@ -64,6 +66,7 @@ fun main() {
         println(buttonsString)
 
         Machine(
+            index = i,
             targetIndicatorLights = indicatorString,
             buttons = buttonsString.trim().split(' ')
                 .map {
@@ -74,13 +77,22 @@ fun main() {
     println("Parsed ${machines.size} machines")
 
 //    println(machines)
+    // Problematic machines: [46, 61, 142, 143, 162]
 
-    var totalShortest = AtomicLong(0L)
+    val totalShortest = AtomicLong(0L)
+    val finishedMachines = AtomicInt(0)
 
-    var finishedMachines = AtomicInt(0)
+    val runningMachines = CopyOnWriteArrayList<Int>()
 
-    machines.pmap { machine ->
-        println("Running machine")
+
+    val watcher = Thread.startVirtualThread {
+        Thread.sleep(30_000)
+        println("Running machines: $runningMachines")
+    }
+
+    machines.coroutinedMap { machine ->
+        println("Running machine ${machine.index}")
+        runningMachines.add(machine.index)
 
         // to prevent repeating actions
         val knownActions = mutableSetOf<SolutionState>()
@@ -90,10 +102,12 @@ fun main() {
             SolutionPath(machine.press(it), listOf(it))
         }.toMutableList()
 
-        var steps = 0
+        var steps = 0L
 
         while (paths.isNotEmpty()) {
+            ++steps
             val currentPath = paths.removeFirst()
+
 //            println("Exploring step ${++steps}: $currentPath")
 
             if (currentPath.machine.isSolved) {
@@ -106,7 +120,7 @@ fun main() {
             } else if (shortestPath == null || shortestPath.buttonPresses.size > currentPath.buttonPresses.size + 1) {
                 val pathsToAdd = currentPath.machine.buttons
                     .filter {
-                    // Dont repeat the same button twice, or use a button that only affects solved indexes
+                        // Dont repeat the same button twice, or use a button that only affects solved indexes
                         it != currentPath.buttonPresses.last() || currentPath.machine.solvedIndexes.containsAll(it.affectedIndexes)
                         // Create a new solution path
                     }.map { button ->
@@ -125,10 +139,14 @@ fun main() {
         }
 
 //        println("Shorted path is: $shortestPath")
-        totalShortest.addAndFetch(shortestPath!!.buttonPresses.size.toLong())
+        val currentResult = totalShortest.addAndFetch(shortestPath!!.buttonPresses.size.toLong())
         val count = finishedMachines.addAndFetch(1)
-        println("$count/${machines.size} machines have finished.")
+        println("Finished machine ${machine.index}. $count/${machines.size} machines have finished.")
+        println("Current result is $currentResult")
+        runningMachines.remove(machine.index)
     }
+
+    watcher.interrupt()
 
     println("Total shortest is: $totalShortest")
 }
@@ -137,6 +155,6 @@ data class SolutionState(val indicatorLights: String, val buttonPresses: List<Bu
 
 data class SolutionPath(val machine: Machine, val buttonPresses: List<Button>)
 
-fun <A, B>List<A>.pmap(f: suspend (A) -> B): List<B> = runBlocking {
+fun <A, B> List<A>.coroutinedMap(f: suspend (A) -> B): List<B> = runBlocking {
     map { async(Dispatchers.Default) { f(it) } }.awaitAll()
 }
