@@ -10,6 +10,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.math.min
 
 val sample = """
     [.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}
@@ -58,6 +59,9 @@ fun main() {
     val input = readDay(10)
 //    val input = sample.lines()
 
+    // Problematic machines: [142]
+    val debugMachines = listOf<Int>()
+
     val machines = input.mapIndexed { i, line ->
         val match = Regex("\\[([.#]+)] ((?:\\([0-9,]+\\) )+).*").matchEntire(line)!!
         println(match.groupValues)
@@ -77,8 +81,6 @@ fun main() {
 
     logger.info { "Parsed ${machines.size} machines" }
 
-//    println(machines)
-    // Problematic machines: [46, 61, 142, 143, 162]
 
     val totalShortest = AtomicLong(0L)
     val finishedMachines = AtomicInt(0)
@@ -91,15 +93,17 @@ fun main() {
         println("Running machines: $runningMachines")
     }
 
-    val machinesToProcess = machines.drop(46).take(1)
+    val machinesToProcess = if (debugMachines.isNotEmpty()) {
+        machines.filter { debugMachines.contains(it.index) }
+    } else {
+        machines
+    }
 
     machinesToProcess.coroutinedMap { machine ->
         println("Running machine ${machine.index}")
         runningMachines.add(machine.index)
 
-        // TODO track shortest path per light config instead? and skip solutions that lead to a path that we reached faster before
-        val knownStates = mutableSetOf<String>()
-        var shortestPath: SolutionPath? = null
+        val shortestPerState = mutableMapOf<String, Int>()
 
         val paths = machine.buttons.map {
             SolutionPath(machine.press(it), listOf(it))
@@ -110,38 +114,45 @@ fun main() {
         while (paths.isNotEmpty()) {
             ++steps
             val currentPath = paths.removeFirst()
-            knownStates += currentPath.machine.indicatorLights + currentPath.buttonPresses.size
+            shortestPerState[currentPath.machine.indicatorLights] = min(
+                shortestPerState.getOrDefault(currentPath.machine.indicatorLights, 99),
+                currentPath.buttonPresses.size
+            )
 
             logger.debug { "Exploring step $steps: $currentPath" }
+            if (steps % 1_000_000 == 0L) {
+                logger.info { "Reached $steps steps, ${paths.size} paths remaining" }
+            }
+
+            val currentBest = shortestPerState.getOrDefault(currentPath.machine.targetIndicatorLights, 99)
 
             if (currentPath.machine.isSolved) {
                 logger.debug { "Machine is solved" }
-                if (shortestPath == null || shortestPath.buttonPresses.size < currentPath.buttonPresses.size) {
-                    shortestPath = currentPath
-                    logger.debug { "It is the shortest" }
-                }
                 // If exploring further can only end up in a longer path, discard the path.
-            } else if (shortestPath == null || shortestPath.buttonPresses.size > currentPath.buttonPresses.size + 1) {
+            } else if (currentBest > currentPath.buttonPresses.size + 1) {
                 val pathsToAdd = currentPath.machine.buttons
                     .filter {
                         // Dont repeat the same button twice, or use a button that only affects solved indexes
-                        it != currentPath.buttonPresses.last() || currentPath.machine.solvedIndexes.containsAll(it.affectedIndexes)
+                        it != currentPath.buttonPresses.last() //|| currentPath.machine.solvedIndexes.containsAll(it.affectedIndexes)
                         // Create a new solution path
                     }.map { button ->
                         SolutionPath(currentPath.machine.press(button), currentPath.buttonPresses + button)
                         // Skip solution paths if we reached the same state faster before
                     }.filter { newSolution ->
-                        !knownStates.contains(newSolution.machine.indicatorLights+newSolution.buttonPresses.size)
+                        shortestPerState.getOrDefault(
+                            newSolution.machine.indicatorLights,
+                            99
+                        ) > newSolution.buttonPresses.size
                     }
 
                 paths.addAll(pathsToAdd)
             }
         }
 
-//        println("Shorted path is: $shortestPath")
-        val currentResult = totalShortest.addAndFetch(shortestPath!!.buttonPresses.size.toLong())
+        val result = shortestPerState[machine.targetIndicatorLights]!!.toLong()
+        val currentResult = totalShortest.addAndFetch(result)
         val count = finishedMachines.addAndFetch(1)
-        println("Finished machine ${machine.index}. $count/${machines.size} machines have finished.")
+        println("Finished machine ${machine.index} with a shortest path of length $result. $count/${machines.size} machines have finished.")
         println("Current result is $currentResult")
         runningMachines.remove(machine.index)
     }
@@ -158,3 +169,7 @@ data class SolutionPath(val machine: Machine, val buttonPresses: List<Button>)
 fun <A, B> List<A>.coroutinedMap(f: suspend (A) -> B): List<B> = runBlocking {
     map { async(Dispatchers.Default) { f(it) } }.awaitAll()
 }
+/**
+ * [.#.##.####] (0,2,5,6,7,8,9) (0,1,6,7) (3,9) (1,2,3,4,5,7) (0,1,2,3,4,6,7,9) (1,2,4,6,8) (0,3,6,8) (1,2,4,5,6,9) (5,7,9) (1,3,5,9) {162,163,150,168,146,31,164,179,12,174}:
+ * [..........] es fehlen: 1,3,4,6,7,8,9
+ */
