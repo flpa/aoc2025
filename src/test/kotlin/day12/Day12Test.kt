@@ -1,6 +1,9 @@
 package day12
 
+import Grid
 import Present
+import flipHorizontal
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import rotate90
 import kotlin.test.assertEquals
@@ -9,7 +12,7 @@ class Day12Test {
     val present =
         Present(
             1,
-            listOf(
+            Grid(
                 "####",
                 "##..",
                 "##..",
@@ -20,7 +23,7 @@ class Day12Test {
     fun testRotate90() {
         val rotated =
             rotate90(
-                listOf(
+                Grid(
                     "##",
                     "##",
                     "#.",
@@ -29,7 +32,7 @@ class Day12Test {
             )
 
         assertEquals(
-            listOf(
+            Grid(
                 ".###",
                 "#.##",
             ),
@@ -41,7 +44,7 @@ class Day12Test {
     fun testRotate90_2() {
         val rotated =
             rotate90(
-                listOf(
+                Grid(
                     "abcd",
                     "efgh",
                     "ijkl",
@@ -49,7 +52,7 @@ class Day12Test {
             )
 
         assertEquals(
-            listOf(
+            Grid(
                 "iea",
                 "jfb",
                 "kgc",
@@ -60,9 +63,30 @@ class Day12Test {
     }
 
     @Test
+    fun testFlipHorizontal() {
+        val flipped =
+            flipHorizontal(
+                Grid(
+                    "####",
+                    "##..",
+                    "##..",
+                ),
+            )
+
+        assertEquals(
+            Grid(
+                "####",
+                "..##",
+                "..##",
+            ),
+            flipped,
+        )
+    }
+
+    @Test
     fun testPresentBaseProperties() {
-        assertEquals(4, present.width)
-        assertEquals(3, present.height)
+        assertEquals(4, present.shape.width)
+        assertEquals(3, present.shape.height)
         assertEquals(8, present.filledCellsCount)
     }
 
@@ -70,20 +94,64 @@ class Day12Test {
     fun testPresentVariants() {
         val allVariants = present.allVariants()
 
-        assertEquals(
+        val expected =
             setOf(
+                // base
                 listOf(
                     "####",
                     "##..",
                     "##..",
                 ),
+                // base flipped
                 listOf(
                     "####",
                     "..##",
                     "..##",
                 ),
-            ),
-            allVariants,
-        )
+                // rotated 90
+                listOf(
+                    "###",
+                    "###",
+                    "..#",
+                    "..#",
+                ),
+                // rotated 90 flipped
+                listOf(
+                    "###",
+                    "###",
+                    "#..",
+                    "#..",
+                ),
+                // rotated 180
+                listOf(
+                    "..##",
+                    "..##",
+                    "####",
+                ),
+                // rotated 180 flipped
+                listOf(
+                    "##..",
+                    "##..",
+                    "####",
+                ),
+                // rotated 270
+                listOf(
+                    "#..",
+                    "#..",
+                    "###",
+                    "###",
+                ),
+                // rotated 270 flipped
+                listOf(
+                    "..#",
+                    "..#",
+                    "###",
+                    "###",
+                ),
+            )
+
+        assertThat(allVariants)
+            .hasSameSizeAs(expected)
+            .containsExactlyInAnyOrder(*expected.toTypedArray())
     }
 }
