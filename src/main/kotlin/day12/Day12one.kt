@@ -36,6 +36,16 @@ val sample = """
 12x5: 1 0 1 0 3 2
 """
 
+fun <T> cartesianProduct(sets: List<Set<T>>): List<List<T>> {
+    // Start with a list containing one empty combination
+    return sets.fold(listOf(emptyList())) { accumulator, currentSet ->
+        // For each existing combination, append each element of currentSet
+        accumulator.flatMap { existingCombination ->
+            currentSet.map { element -> existingCombination + element }
+        }
+    }
+}
+
 fun main() {
     val input = sample.lines()
 
@@ -56,15 +66,17 @@ fun main() {
                 val emptyGrid = location.createEmptyGrid()
                 logger.debug {
                     "Trying to fill this ${location.width}x${location.height} location:$emptyGrid\n\nwith these ${presents.size} presents: " +
-                        requiredPresentInstances.joinToString("\n") { "${it.shape}" }
+                            requiredPresentInstances.joinToString("\n") { "${it.shape}" }
                 }
+                val listOfVariants = requiredPresentInstances.map { it.allVariants() }
+
+                // combinations is: if three presents, 000, 001, 002, 003... where 0,1,2,3 are the variants of present 3?
+                val combinations = cartesianProduct(listOfVariants)
+
+                logger.info { "${combinations.size} combinations for location" }
+
+                true
             }
-
-            // permutations is: if three presents, 000, 001, 002, 003... where 0,1,2,3 are the variants of present 3?
-
-            val listOfVariants = requiredPresentInstances.map { it.allVariants() }
-
-            true
         }
 
     logger.info { "${successfulLocations.size} locations are successful" }
