@@ -58,16 +58,19 @@ fun main() {
     // stupid solution: try each present variant in each position. position = top-left corner of present
     val successfulLocations =
         locations.filter { location ->
-            val requiredPresentInstances = location.requiredPresents.map { presentedIndexed.getValue(it) }
-            if (location.totalSize < requiredPresentInstances.sumOf { it.filledCellsCount }) {
-                logger.info { "Location $location is impossible due to insufficient size" }
+            val emptyGrid = location.createEmptyGrid()
+            val requiredPresentInstances = location.requiredPresents.flatMapIndexed { presentIndex, howMany ->
+                (0..<howMany).map { presentedIndexed.getValue(presentIndex) } }
+
+            logger.debug {
+                "Trying to fill this ${location.width}x${location.height} location:$emptyGrid\n\nwith these ${requiredPresentInstances.size} presents: " +
+                        requiredPresentInstances.joinToString("\n") { "${it.shape}" }
+            }
+            val requiredCells = requiredPresentInstances.sumOf { it.filledCellsCount }
+            if (location.totalSize < requiredCells) {
+                logger.info { "Location $location is impossible due to insufficient size (space needed: $requiredCells, space: ${location.totalSize})" }
                 false
             } else {
-                val emptyGrid = location.createEmptyGrid()
-                logger.debug {
-                    "Trying to fill this ${location.width}x${location.height} location:$emptyGrid\n\nwith these ${presents.size} presents: " +
-                            requiredPresentInstances.joinToString("\n") { "${it.shape}" }
-                }
                 val listOfVariants = requiredPresentInstances.map { it.allVariants() }
 
                 // combinations is: if three presents, 000, 001, 002, 003... where 0,1,2,3 are the variants of present 3?
@@ -75,11 +78,29 @@ fun main() {
 
                 logger.info { "${combinations.size} combinations for location" }
 
-                true
+
+                doFit(emptyGrid, combinations)
             }
         }
 
     logger.info { "${successfulLocations.size} locations are successful" }
+}
+
+fun doFit(emptyGrid: Grid, combinations: List<List<Grid>>): Boolean {
+    combinations.forEach { combination ->
+        val presentsToPlace = combination.toMutableList()
+        do {
+            val present = presentsToPlace.removeFirst()
+
+            for (x in 0..<emptyGrid.width) {
+                for (y in 0..<emptyGrid.height) {
+
+                }
+            }
+        } while(presentsToPlace.isNotEmpty())
+    }
+
+    return false
 }
 
 private fun parseInput(input: List<String>): Pair<List<Present>, List<PresentLocation>> {
@@ -139,11 +160,23 @@ private fun parseInput(input: List<String>): Pair<List<Present>, List<PresentLoc
     return Pair(presents.toList(), locations.toList())
 }
 
+data class Coord(val x: Int, val y: Int)
+
 data class Present(
     val id: Int,
     val shape: Grid,
 ) {
-    val filledCellsCount = shape.cells.flatMap { it.toCharArray().toList() }.count { it == '#' }
+    val filledCells = shape.cells.flatMapIndexed { y, line ->
+        line.mapIndexedNotNull { x, cell ->
+            if (cell == '#') {
+                Coord(x, y)
+            } else {
+                null
+            }
+        }
+    }
+
+    val filledCellsCount = filledCells.size
 
     fun allVariants(): Set<Grid> {
         val variants = mutableSetOf<Present>()
