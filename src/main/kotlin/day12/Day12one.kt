@@ -60,7 +60,8 @@ fun main() {
         locations.filter { location ->
             val emptyGrid = location.createEmptyGrid()
             val requiredPresentInstances = location.requiredPresents.flatMapIndexed { presentIndex, howMany ->
-                (0..<howMany).map { presentedIndexed.getValue(presentIndex) } }
+                (0..<howMany).map { presentedIndexed.getValue(presentIndex) }
+            }
 
             logger.debug {
                 "Trying to fill this ${location.width}x${location.height} location:$emptyGrid\n\nwith these ${requiredPresentInstances.size} presents: " +
@@ -87,20 +88,37 @@ fun main() {
 }
 
 fun doFit(emptyGrid: Grid, combinations: List<List<Grid>>): Boolean {
-    combinations.forEach { combination ->
-        val presentsToPlace = combination.toMutableList()
-        do {
-            val present = presentsToPlace.removeFirst()
+    for(presentsToPlace in combinations) {
+        var combinationGrid = emptyGrid
+        for (i in 0 until presentsToPlace.size) {
+            val presentShape = presentsToPlace[i]
+            val gridWithPresentPlaced = tryPlacePresent(combinationGrid, Present(i, presentShape))
 
-            for (x in 0..<emptyGrid.width) {
-                for (y in 0..<emptyGrid.height) {
-
-                }
+            if (gridWithPresentPlaced == null) {
+                logger.info { "Couldn't place present" }
+                continue
+            } else {
+                combinationGrid = gridWithPresentPlaced
             }
-        } while(presentsToPlace.isNotEmpty())
+        }
+        return true
     }
 
     return false
+}
+
+fun tryPlacePresent(grid: Grid, present: Present): Grid? {
+    // TODO maybe fill in letters instead of #?
+    for (x in 0..<grid.width - present.shape.width) {
+        for (y in 0..<grid.height - present.shape.height) {
+            val modifiedGrid = grid.tryFit(present, Coord(x, y))
+            if (modifiedGrid != null) {
+                logger.info { "Placed a present: $modifiedGrid" }
+                return modifiedGrid
+            }
+        }
+    }
+    return null
 }
 
 private fun parseInput(input: List<String>): Pair<List<Present>, List<PresentLocation>> {
@@ -229,4 +247,17 @@ data class Grid(
     override fun toString(): String = "\n" + cells.joinToString("\n")
 
     constructor(vararg cells: String) : this(cells.toList())
+
+    fun tryFit(present: Present, at: Coord): Grid? {
+        val newCells = cells.map { it.toMutableList() }.toMutableList()
+        present.filledCells.forEach { cell ->
+            val y = cell.y + at.y
+            val x = cell.x + at.x
+            if (newCells.getOrNull(y)?.getOrNull(x) != '.') {
+                return null
+            }
+            newCells[y][x] = present.id.toString()[0]
+        }
+        return Grid(newCells.map { it.joinToString("") })
+    }
 }

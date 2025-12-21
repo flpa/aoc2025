@@ -1,5 +1,6 @@
 package day12
 
+import Coord
 import Grid
 import Present
 import flipHorizontal
@@ -97,52 +98,52 @@ class Day12Test {
         val expected =
             setOf(
                 // base
-                listOf(
+                Grid(
                     "####",
                     "##..",
                     "##..",
                 ),
                 // base flipped
-                listOf(
+                Grid(
                     "####",
                     "..##",
                     "..##",
                 ),
                 // rotated 90
-                listOf(
+                Grid(
                     "###",
                     "###",
                     "..#",
                     "..#",
                 ),
                 // rotated 90 flipped
-                listOf(
+                Grid(
                     "###",
                     "###",
                     "#..",
                     "#..",
                 ),
                 // rotated 180
-                listOf(
+                Grid(
                     "..##",
                     "..##",
                     "####",
                 ),
                 // rotated 180 flipped
-                listOf(
+                Grid(
                     "##..",
                     "##..",
                     "####",
                 ),
                 // rotated 270
-                listOf(
+                Grid(
                     "#..",
                     "#..",
                     "###",
                     "###",
                 ),
                 // rotated 270 flipped
-                listOf(
+                Grid(
                     "..#",
                     "..#",
                     "###",
@@ -153,5 +154,135 @@ class Day12Test {
         assertThat(allVariants)
             .hasSameSizeAs(expected)
             .containsExactlyInAnyOrder(*expected.toTypedArray())
+    }
+
+    @Test
+    fun testFilledGridCells1() {
+        assertThat(
+            Present(
+                1, Grid(
+                    "##",
+                    ".."
+                )
+            ).filledCells
+        ).containsOnly(
+            Coord(0, 0),
+            Coord(1, 0)
+        )
+    }
+
+    @Test
+    fun testFilledGridCells2() {
+        assertThat(
+            Present(
+                1, Grid(
+                    "#.",
+                    ".#"
+                )
+            ).filledCells
+        ).containsOnly(
+            Coord(0, 0),
+            Coord(1, 1)
+        )
+    }
+
+    @Test
+    fun testTryFit_zeroZero() {
+        assertThat(
+            Grid(
+                "..",
+                ".."
+            ).tryFit(
+                Present(
+                    1, Grid(
+                        "#",
+                        "#"
+                    )
+                ), Coord(0, 0)
+            )
+        ).isEqualTo(
+            Grid(
+                "#.",
+                "#."
+            )
+        )
+    }
+
+    @Test
+    fun testTryFit_zeroOne() {
+        assertThat(
+            Grid(
+                "..",
+                ".."
+            ).tryFit(
+                Present(
+                    1, Grid(
+                        "#",
+                        "#"
+                    )
+                ), Coord(1, 0)
+            )
+        ).isEqualTo(
+            Grid(
+                ".#",
+                ".#"
+            )
+        )
+    }
+
+    @Test
+    fun testTryFitDiagonal() {
+        assertThat(
+            Grid(
+                "..",
+                ".."
+            ).tryFit(
+                Present(
+                    1, Grid(
+                        "#.",
+                        ".#"
+                    )
+                ), Coord(0, 0)
+            )
+        ).isEqualTo(
+            Grid(
+                "#.",
+                ".#"
+            )
+        )
+    }
+
+    @Test
+    fun testTryFitNoSpace() {
+        assertThat(
+            Grid(
+                "..",
+                "#."
+            ).tryFit(
+                Present(
+                    1, Grid(
+                        "#.",
+                        "#."
+                    )
+                ), Coord(0, 0)
+            )
+        ).isNull()
+    }
+
+    @Test
+    fun testTryFitTooBig() {
+        assertThat(
+            Grid(
+                "..",
+                ".."
+            ).tryFit(
+                Present(
+                    1, Grid(
+                        "#.",
+                        "#."
+                    )
+                ), Coord(0, 1)
+            )
+        ).isNull()
     }
 }
