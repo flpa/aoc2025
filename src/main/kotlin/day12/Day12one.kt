@@ -1,4 +1,5 @@
 import org.example.logger
+import org.example.readDay
 
 val sample = """
 0:
@@ -47,7 +48,8 @@ fun <T> cartesianProduct(sets: List<Set<T>>): List<List<T>> {
 }
 
 fun main() {
-    val input = sample.lines()
+    val input = readDay(12)
+//    val input = sample.lines()
 
     val (presents, locations) = parseInput(input)
     logger.info { "Parsed ${presents.size} presents and ${locations.size} locations" }
@@ -79,7 +81,6 @@ fun main() {
 
                 logger.info { "${combinations.size} combinations for location" }
 
-
                 doFit(emptyGrid, combinations)
             }
         }
@@ -88,32 +89,37 @@ fun main() {
 }
 
 fun doFit(emptyGrid: Grid, combinations: List<List<Grid>>): Boolean {
-    for(presentsToPlace in combinations) {
+    var j = 0
+    combinations@ for(presentsToPlace in combinations) {
+        j++
+        logger.debug { "Trying combination $j/${combinations.size}: $presentsToPlace" }
         var combinationGrid = emptyGrid
         for (i in 0 until presentsToPlace.size) {
             val presentShape = presentsToPlace[i]
             val gridWithPresentPlaced = tryPlacePresent(combinationGrid, Present(i, presentShape))
 
             if (gridWithPresentPlaced == null) {
-                logger.info { "Couldn't place present" }
-                continue
+                logger.debug { "Couldn't place present, trying next combination" }
+                continue@combinations
             } else {
                 combinationGrid = gridWithPresentPlaced
             }
         }
+        logger.info { "Combination $j was successful: $combinationGrid" }
         return true
     }
 
+    logger.info { "No combinations remain" }
     return false
 }
 
 fun tryPlacePresent(grid: Grid, present: Present): Grid? {
     // TODO maybe fill in letters instead of #?
-    for (x in 0..<grid.width - present.shape.width) {
-        for (y in 0..<grid.height - present.shape.height) {
+    for (x in 0..grid.width - present.shape.width) {
+        for (y in 0..grid.height - present.shape.height) {
             val modifiedGrid = grid.tryFit(present, Coord(x, y))
             if (modifiedGrid != null) {
-                logger.info { "Placed a present: $modifiedGrid" }
+                logger.debug { "Placed a present: $modifiedGrid" }
                 return modifiedGrid
             }
         }
